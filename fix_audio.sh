@@ -22,6 +22,55 @@ if [ "$(id -u)" -eq 0 ]; then
   exit 1
 fi
 
+# --- Hardware guard ---------------------------------------------------------
+# Everything below is specific to this machine: the hwC1D0 path, pin node 0x18,
+# and the codec/subsystem IDs baked into the patch file. On different audio
+# hardware the sysfs writes fail -- and since PipeWire is stopped first, `set -e`
+# would abort partway and leave the session with no sound at all. So check the
+# codec before touching anything. Pass --force to skip (e.g. same codec, but the
+# kernel reports a slightly different name).
+CODEC_PATH="/sys/class/sound/hwC1D0"
+WANT_VENDOR="Conexant"
+WANT_CHIP="SN6140"
+
+FORCE=0
+[ "${1-}" = "--force" ] && FORCE=1
+
+wrong_hardware() {
+  echo "ERROR: this script targets the $WANT_VENDOR $WANT_CHIP at $CODEC_PATH." >&2
+  echo "       $1" >&2
+  echo "       Nothing has been changed -- audio is untouched." >&2
+  echo >&2
+  echo "       Codecs actually present:" >&2
+  local found=0 d
+  for d in /sys/class/sound/hwC*D*; do
+    [ -r "$d/chip_name" ] || continue
+    echo "         $(basename "$d") -- $(cat "$d/vendor_name" 2>/dev/null) $(cat "$d/chip_name")" >&2
+    found=1
+  done
+  [ "$found" -eq 0 ] && echo "         (none found)" >&2
+  echo >&2
+  echo "       If this is the right codec under a different name, re-run with --force." >&2
+  exit 1
+}
+
+if [ "$FORCE" -eq 1 ]; then
+  echo "==> Codec check: skipped (--force)"
+else
+  [ -d "$CODEC_PATH" ] || wrong_hardware "$CODEC_PATH does not exist."
+
+  VENDOR="$(cat "$CODEC_PATH/vendor_name" 2>/dev/null || true)"
+  CHIP="$(cat "$CODEC_PATH/chip_name" 2>/dev/null || true)"
+
+  [ "$VENDOR" = "$WANT_VENDOR" ] && [ "$CHIP" = "$WANT_CHIP" ] ||
+    wrong_hardware "Found '${VENDOR:-?} ${CHIP:-?}' there instead."
+
+  [ -e "$CODEC_PATH/user_pin_configs" ] ||
+    wrong_hardware "$CODEC_PATH/user_pin_configs is missing, so pins can't be overridden."
+
+  echo "==> Codec check: $VENDOR $CHIP at hwC1D0 -- OK"
+fi
+
 echo "==> Stopping PipeWire so the codec can be reconfigured..."
 # Sockets first, else socket activation restarts the services mid-stop.
 systemctl --user stop pipewire.socket pipewire-pulse.socket || true

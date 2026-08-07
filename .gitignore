@@ -1,0 +1,9 @@
+# Backups made by install.sh
+*.bak.*
+
+# Local Claude Code settings (machine-specific paths)
+.claude/
+
+# Recreated by `omarchy-theme-set` as a symlink into ~/.config/omarchy/current;
+# it resolves to nothing from inside the repo, so it must not be tracked.
+config/nvim/lua/plugins/theme.lua

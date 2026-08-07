@@ -1,0 +1,20 @@
+return {
+	cmd = { "ols" },
+	filetypes = { "odin" },
+	root_markers = { "ols.json", "odinfmt.json", ".git" },
+	init_options = {
+		enable_semantic_tokens = true,
+		enable_document_symbols = true,
+		enable_hover = true,
+		enable_snippets = true,
+		enable_references = true,
+		enable_inlay_hints_params = true,
+		enable_inlay_hints_default_params = true,
+		enable_inlay_hints_implicit_return = true,
+		enable_checker_only_saved = true,
+		enable_auto_import = true,
+		checker_args = "-vet -vet-cast -vet-semicolon -vet-using-param",
+		character_width = 100,
+		newline_limit = 2,
+	},
+}
